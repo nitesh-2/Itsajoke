@@ -1,0 +1,49 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run production
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Install dependencies for testing
+        run: npm install --dev
+
+      - name: Run tests
+        run: npm test
+
+  deploy:
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Deploy to Development Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_PUBLIC_IP }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            rsync -avz --delete ./ ubuntu@18.171.57.77:/var/www/html
+            # Replace '/var/www/html' with the path on your server where you want to deploy the code
